@@ -21,6 +21,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get all call records
+// Get all call records
 router.get('/', async (req, res) => {
     try {
         console.log("Fetching call records from Neo4j...");
@@ -29,6 +30,7 @@ router.get('/', async (req, res) => {
             `MATCH (c:Customer)-[:MADE_CALL]->(call:Call)
              RETURN ID(call) AS id, 
                     c.name AS customerName, 
+                    c.phone AS phoneNumber,  // Add phone number
                     call.agentName AS agentName, 
                     call.issue AS issue, 
                     call.status AS status, 
@@ -41,6 +43,7 @@ router.get('/', async (req, res) => {
         const calls = result.records.map(record => ({
             id: record.get('id').low,  // Ensure ID is converted properly
             customerName: record.get('customerName'),
+            phoneNumber: record.get('phoneNumber'), // Include phone number
             agentName: record.get('agentName'),  
             issue: record.get('issue'),
             status: record.get('status'),
@@ -56,6 +59,30 @@ router.get('/', async (req, res) => {
     }
 });
 
+
+// Update all call record fields (agentName, customerName, phoneNumber, issue, status, callDuration)
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    const { agentName, customerName, phoneNumber, issue, status, callDuration } = req.body;
+
+    try {
+        await session.run(
+            `MATCH (call:Call)
+             WHERE ID(call) = $id
+             SET call.agentName = $agentName,
+                 call.customerName = $customerName,
+                 call.phoneNumber = $phoneNumber,
+                 call.issue = $issue,
+                 call.status = $status,
+                 call.callDuration = $callDuration`,
+            { id: parseInt(id), agentName, customerName, phoneNumber, issue, status, callDuration }
+        );
+
+        res.json({ message: "Call record updated successfully" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Update call status
 router.put('/:id', async (req, res) => {
